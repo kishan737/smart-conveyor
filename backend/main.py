@@ -237,7 +237,7 @@ def extract_cargo_data_with_gemini(pdf_path: Path) -> list:
     with open(pdf_path, "rb") as f:
         pdf_bytes = f.read()
 
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-1.5-flash-latest")
 
     response = model.generate_content(
         [
