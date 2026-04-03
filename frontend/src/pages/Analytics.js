@@ -208,7 +208,6 @@ function Analytics() {
 
   const mismatchEntries = Object.entries(data.mismatchCounts);
   const maxMismatch     = Math.max(...mismatchEntries.map(([, v]) => v), 1);
-  const maxThroughput   = Math.max(...data.throughput.map((t) => t.processed), 1);
   const maxCargo        = data.cargoTypeDist.length > 0 ? data.cargoTypeDist[0].count : 1;
 
   return (
@@ -472,7 +471,7 @@ function Analytics() {
             <EmptyState text="No HS code data available." />
           ) : (
             <div>
-              {data.hsCodeDist.map((item, i) => {
+              {data.hsCodeDist.map((item) => {
                 const maxHs = data.hsCodeDist[0]?.count || 1;
                 return (
                   <div key={item.code} style={{ marginBottom: "14px" }}>
