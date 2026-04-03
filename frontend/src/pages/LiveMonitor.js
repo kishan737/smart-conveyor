@@ -360,9 +360,7 @@ function LiveMonitor() {
         setPdfStatus(`PDF upload failed: ${data.error}`);
         return;
       }
-      setPdfStatus(
-        `PDF reference loaded: ${data.items_extracted} items`
-      );
+      setPdfStatus(`PDF reference loaded: ${data.items_extracted} items`);
       setExcelFileName(data.excel_file || "");
       setExcelData(data.data || []);
     } catch (err) {
@@ -373,9 +371,12 @@ function LiveMonitor() {
 
   return (
     <div className="app-root">
+      {/* ── Header ── */}
       <div className="header-bar">
         <span className="header-title">Port Knights</span>
         <div className="header-controls">
+
+          {/* Hidden Excel input */}
           <input
             ref={excelInputRef}
             type="file"
@@ -383,6 +384,8 @@ function LiveMonitor() {
             style={{ display: "none" }}
             onChange={handleFile}
           />
+
+          {/* View Excel — only shown when a reference file exists */}
           {excelFileName && (
             <button
               style={{
@@ -392,7 +395,7 @@ function LiveMonitor() {
                 border: "1px solid #cbd5e1",
                 background: "#ffffff",
                 cursor: "pointer",
-                fontSize: "12px"
+                fontSize: "12px",
               }}
               onClick={() => {
                 window.open(
@@ -404,6 +407,8 @@ function LiveMonitor() {
               📄 View Excel
             </button>
           )}
+
+          {/* Choose Excel */}
           <button
             onClick={() => excelInputRef.current.click()}
             style={{
@@ -411,11 +416,13 @@ function LiveMonitor() {
               borderRadius: "8px",
               border: "1px solid #cbd5e1",
               background: "#f1f5f9",
-              cursor: "pointer"
+              cursor: "pointer",
             }}
           >
             📊 Choose Excel
           </button>
+
+          {/* Hidden PDF input */}
           <input
             ref={pdfInputRef}
             type="file"
@@ -425,6 +432,8 @@ function LiveMonitor() {
             style={{ display: "none" }}
             onChange={handlePdfUpload}
           />
+
+          {/* Choose PDFs */}
           <button
             onClick={() => pdfInputRef.current.click()}
             style={{
@@ -432,11 +441,13 @@ function LiveMonitor() {
               borderRadius: "8px",
               border: "1px solid #cbd5e1",
               background: "#f1f5f9",
-              cursor: "pointer"
+              cursor: "pointer",
             }}
           >
             📄 Choose PDFs
           </button>
+
+          {/* START */}
           <button
             className="ctrl-btn"
             onClick={() => setIsRunning(true)}
@@ -445,6 +456,8 @@ function LiveMonitor() {
           >
             ▶ START
           </button>
+
+          {/* PAUSE */}
           <button
             className="ctrl-btn"
             onClick={() => setIsRunning(false)}
@@ -452,6 +465,8 @@ function LiveMonitor() {
           >
             ⏸ PAUSE
           </button>
+
+          {/* RESET */}
           <button
             className="ctrl-btn"
             onClick={resetBackend}
@@ -459,12 +474,16 @@ function LiveMonitor() {
           >
             ↺ RESET
           </button>
+
+          {/* Running / Idle pill */}
           <span
             className="status-pill"
             style={{
-              background: isRunning ? "rgba(22,163,74,0.12)" : "rgba(220,38,38,0.08)",
+              background: isRunning
+                ? "rgba(22,163,74,0.12)"
+                : "rgba(220,38,38,0.08)",
               color: isRunning ? "#16a34a" : "#dc2626",
-              border: `1px solid ${isRunning ? "#16a34a" : "#dc2626"}`
+              border: `1px solid ${isRunning ? "#16a34a" : "#dc2626"}`,
             }}
           >
             {isRunning ? "● RUNNING" : "○ IDLE"}
@@ -472,6 +491,7 @@ function LiveMonitor() {
         </div>
       </div>
 
+      {/* ── PDF status banner ── */}
       {pdfStatus && (
         <div
           style={{
@@ -481,13 +501,14 @@ function LiveMonitor() {
             border: "1px solid #e2e8f0",
             borderRadius: "6px",
             padding: "6px 10px",
-            marginTop: "6px"
+            marginTop: "6px",
           }}
         >
           {pdfStatus}
         </div>
       )}
 
+      {/* ── Summary cards ── */}
       <div className="stats-row">
         <div className="stat-card tot">
           <span>TOTAL</span>
@@ -507,44 +528,53 @@ function LiveMonitor() {
         </div>
       </div>
 
+      {/* ── Inspection log table ── */}
       <div className="table-panel">
         <div className="panel-label">Inspection Log — latest first</div>
         <div className="table-scroll">
           <table>
             <thead>
               <tr>
-                <th style={{ width: "12%" }}>ID</th>
-                <th style={{ width: "20%" }}>Name</th>
-                <th style={{ width: "12%" }}>Weight</th>
-                <th style={{ width: "36%" }}>Status</th>
-                <th style={{ width: "20%" }}>Time</th>
+                <th style={{ width: "9%" }}>ID</th>
+                <th style={{ width: "18%" }}>Name</th>
+                <th style={{ width: "11%" }}>Cargo Type</th>
+                <th style={{ width: "10%" }}>Weight (kg)</th>
+                <th style={{ width: "10%" }}>Volume (m³)</th>
+                <th style={{ width: "9%" }}>HS Code</th>
+                <th style={{ width: "21%" }}>Status</th>
+                <th style={{ width: "12%" }}>Time</th>
               </tr>
             </thead>
             <tbody>
               {tableData.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={8}
                     style={{
                       textAlign: "center",
                       padding: "20px",
                       color: "#9ca3af",
                       fontStyle: "italic",
-                      fontSize: "11px"
+                      fontSize: "11px",
                     }}
                   >
-                    No data yet — upload a file and press START
+                    No data yet — upload reference data and press START
                   </td>
                 </tr>
               ) : (
                 tableData.map((row, index) => (
                   <tr
                     key={row.id + row.time}
-                    className={`${row.status === "OK" ? "row-ok" : "row-err"} ${index === 0 ? "row-new" : ""}`}
+                    className={`${row.status === "OK" ? "row-ok" : "row-err"} ${
+                      index === 0 ? "row-new" : ""
+                    }`}
                   >
                     <td>{row.id}</td>
                     <td>{row.name}</td>
-                    <td>{row.weight}</td>
+                    <td>{row.cargo_type ?? ""}</td>
+                    <td>{row.weight != null ? Number(row.weight).toFixed(2) : ""}</td>
+                    <td>{row.volume != null ? Number(row.volume).toFixed(4) : ""}</td>
+                    <td>{row.hs_code ?? ""}</td>
                     <td className={row.status === "OK" ? "status-ok" : "status-err"}>
                       {row.status === "OK" ? "✓ OK" : `✗ ${row.status}`}
                     </td>
@@ -557,13 +587,14 @@ function LiveMonitor() {
         </div>
       </div>
 
+      {/* ── Conveyor belt ── */}
       <div className="conveyor-panel">
         <div className="panel-label">Conveyor Belt — live feed</div>
         <div className="conveyor-track-wrap" ref={trackRef}>
           <div
             className="belt-stripe"
             style={{
-              animation: isRunning ? "beltMove 0.5s linear infinite" : "none"
+              animation: isRunning ? "beltMove 0.5s linear infinite" : "none",
             }}
           />
 
@@ -594,7 +625,11 @@ function LiveMonitor() {
               key={item.uid}
               style={{ transform: `translateX(${item.x}px)` }}
             >
-              <div className={`belt-box-inner ${item.status === "OK" ? "ok" : "err"}`}>
+              <div
+                className={`belt-box-inner ${
+                  item.status === "OK" ? "ok" : "err"
+                }`}
+              >
                 <span>{item.status === "OK" ? "✓" : "✗"}</span>
                 <span className="belt-box-id">{String(item.id).slice(0, 7)}</span>
               </div>
