@@ -50,20 +50,36 @@ reference_source: str | None = None
 hardware_data_store: List[dict] = []
 
 
+# ------------------ CANONICAL SCHEMA ------------------
+#
+# Every item in this system — whether from Excel, Gemini/PDF, or hardware
+# sensors — must conform to this schema before being stored or compared:
+#
+# {
+#     "id":         str,    # unique package / box identifier
+#     "name":       str,
+#     "cargo_type": str,
+#     "weight":     float,  # kilograms
+#     "volume":     float,  # cubic meters (m³)
+#     "hs_code":    str,
+# }
+
+
 # ------------------ MODELS ------------------
 
 class HardwareItem(BaseModel):
     id: str
     name: str
+    cargo_type: str
     weight: float
-    length: float
-    width: float
-    height: float
+    volume: float
+    hs_code: str
 
 
 # ------------------ HELPERS ------------------
 
 def safe_float(value: Any, default: float = 0.0) -> float:
+    """Safely coerce any value to float, returning `default` on failure."""
     if value is None:
         return default
     if isinstance(value, (int, float)):
@@ -95,42 +111,50 @@ def safe_float(value: Any, default: float = 0.0) -> float:
 
 def normalize_reference_rows(rows: List[dict], source: str) -> List[dict]:
     """
-    Convert Excel or PDF extracted rows into one internal format so the
-    rest of the app can compare against a single structure.
+    Convert Excel or Gemini/PDF extracted rows into the canonical schema.
+
+    Canonical schema (all normalizers must produce this):
+        id, name, cargo_type, weight (kg), volume (m³), hs_code
     """
     normalized = []
 
-    for idx, row in enumerate(rows):
+    for row in rows:
         if source == "pdf":
+            # Gemini output fields: name, unique_id, cargo_type, hs_code, weight, volume
+            # Units are already standardised by the Gemini prompt (kg, m³).
             normalized.append(
                 {
-                    "id": str(row.get("unique_id", "")).strip(),
-                    "name": str(row.get("product_name", "")).strip(),
-                    "weight": safe_float(row.get("gross_weight", 0)),
-                    "length": 0.0,
-                    "width": 0.0,
-                    "height": 0.0,
-                    "hs_code": str(row.get("hs_code", "")).strip(),
-                    "volume": safe_float(row.get("volume", 0)),
-                    "source": "pdf",
+                    "id":         str(row.get("unique_id", "")).strip(),
+                    "name":       str(row.get("name", "")).strip(),
+                    "cargo_type": str(row.get("cargo_type", "")).strip(),
+                    "weight":     safe_float(row.get("weight", 0)),
+                    "volume":     safe_float(row.get("volume", 0)),
+                    "hs_code":    str(row.get("hs_code", "")).strip(),
                 }
             )
         else:
+            # Excel may supply either a pre-computed `volume` column
+            # or raw dimension columns (length, width, height) in metres.
+            raw_volume = safe_float(row.get("volume", 0))
+            if raw_volume == 0.0:
+                length = safe_float(row.get("length", 0))
+                width  = safe_float(row.get("width",  0))
+                height = safe_float(row.get("height", 0))
+                raw_volume = length * width * height
+
             normalized.append(
                 {
-                    "id": str(row.get("id", "")).strip(),
-                    "name": str(row.get("name", "")).strip(),
-                    "weight": safe_float(row.get("weight", 0)),
-                    "length": safe_float(row.get("length", 0)),
-                    "width": safe_float(row.get("width", 0)),
-                    "height": safe_float(row.get("height", 0)),
-                    "hs_code": str(row.get("hs_code", "")).strip(),
-                    "volume": safe_float(row.get("volume", 0)),
-                    "source": "excel",
+                    "id":         str(row.get("id", "")).strip(),
+                    "name":       str(row.get("name", "")).strip(),
+                    "cargo_type": str(row.get("cargo_type", "")).strip(),
+                    "weight":     safe_float(row.get("weight", 0)),
+                    "volume":     raw_volume,
+                    "hs_code":    str(row.get("hs_code", "")).strip(),
                 }
             )
 
-    normalized = [row for row in normalized if row["id"] or row["name"]]
+    # Drop completely empty rows (no id AND no name)
+    normalized = [r for r in normalized if r["id"] or r["name"]]
     return normalized
 
 
@@ -164,9 +188,49 @@ def merge_pdfs(pdf_paths: List[Path]) -> Path:
     return merged_path
 
 
+GEMINI_PROMPT = """You are a cargo data extraction engine.
+
+Extract every cargo item from the attached PDF and return ONLY a valid JSON array.
+Do not include any explanation, markdown, or code fences — just the raw JSON array.
+
+Each element of the array must have EXACTLY these six fields:
+  "name"        — product / item name (string, "" if missing)
+  "unique_id"   — package, box, or item identifier (string, "" if missing)
+  "cargo_type"  — category or type of cargo (string, "" if missing)
+  "hs_code"     — HS / harmonised tariff code (string, "" if missing)
+  "weight"      — gross weight in KILOGRAMS (number, 0 if missing)
+                  • convert lbs / pounds → kg  : kg = lb × 0.453592
+  "volume"      — volume in CUBIC METRES (number, 0 if missing)
+                  • if volume is given directly, convert to m³ as needed
+                  • if only dimensions are given, compute volume = L × W × H
+                    after converting each dimension to metres:
+                      mm → ÷ 1000  |  cm → ÷ 100  |  in → × 0.0254  |  ft → × 0.3048
+                  • if neither volume nor dimensions are present, use 0
+
+Rules:
+  • Ignore document headers, sender / receiver addresses, and grand-total rows.
+  • Do NOT guess or invent values.
+  • Missing text  → ""
+  • Missing number → 0
+  • Return a flat JSON array even if the PDF contains only one item.
+
+Example output format:
+[
+  {
+    "name": "Steel Rod Bundle",
+    "unique_id": "PKG001",
+    "cargo_type": "metal",
+    "hs_code": "7207",
+    "weight": 120.5,
+    "volume": 0.48
+  }
+]
+"""
+
+
 def extract_cargo_data_with_gemini(pdf_path: Path) -> list:
     if not GEMINI_API_KEY:
-        raise ValueError("GEMINI_API_KEY missing")
+        raise ValueError("GEMINI_API_KEY is not configured on the server.")
 
     genai.configure(api_key=GEMINI_API_KEY)
 
@@ -175,44 +239,43 @@ def extract_cargo_data_with_gemini(pdf_path: Path) -> list:
 
     model = genai.GenerativeModel("gemini-1.5-flash")
 
-    prompt = """Extract cargo data from this PDF.
-
-Return JSON only.
-
-Fields:
-- product_name
-- hs_code
-- unique_id
-- gross_weight
-- volume
-
-Rules:
-- Ignore headers, addresses, totals
-- If HS code not present, return ""
-- Do not guess values
-"""
-
     response = model.generate_content(
         [
             {"mime_type": "application/pdf", "data": pdf_bytes},
-            prompt
+            GEMINI_PROMPT,
         ]
     )
 
     text = response.text.strip()
 
+    # Strip accidental markdown code fences if the model adds them despite instructions
+    if text.startswith("```"):
+        lines = text.splitlines()
+        # Remove opening fence (```json or ```)
+        lines = lines[1:] if lines[0].startswith("```") else lines
+        # Remove closing fence
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        text = "\n".join(lines).strip()
+
     try:
         parsed = json.loads(text)
-    except Exception:
-        raise ValueError("Gemini did not return valid JSON")
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            f"Gemini did not return valid JSON. Parser error: {exc}\n"
+            f"Raw response (first 500 chars): {text[:500]}"
+        )
 
+    # Normalise to a list regardless of whether Gemini wrapped items in a dict
     if isinstance(parsed, dict):
         if "items" in parsed and isinstance(parsed["items"], list):
             return parsed["items"]
         return [parsed]
 
     if not isinstance(parsed, list):
-        raise ValueError("Gemini output is not a list")
+        raise ValueError(
+            f"Gemini output is not a JSON array. Got type: {type(parsed).__name__}"
+        )
 
     return parsed
 
@@ -220,9 +283,9 @@ Rules:
 def save_extracted_outputs(raw_data: list, normalized_data: list):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    raw_json_path = EXTRACTED_DIR / f"extracted_raw_{timestamp}.json"
+    raw_json_path        = EXTRACTED_DIR / f"extracted_raw_{timestamp}.json"
     normalized_json_path = REFERENCE_DIR / f"reference_{timestamp}.json"
-    excel_path = REFERENCE_DIR / f"reference_{timestamp}.xlsx"
+    excel_path           = REFERENCE_DIR / f"reference_{timestamp}.xlsx"
 
     with open(raw_json_path, "w", encoding="utf-8") as f:
         json.dump(raw_data, f, indent=2, ensure_ascii=False)
@@ -247,12 +310,12 @@ def root():
 def reference_status():
     return {
         "reference_source": reference_source,
-        "reference_count": len(reference_data_store),
-        "hardware_count": len(hardware_data_store),
+        "reference_count":  len(reference_data_store),
+        "hardware_count":   len(hardware_data_store),
     }
 
 
-# ------------------ EXCEL ROUTE (OLD FLOW KEPT) ------------------
+# ------------------ EXCEL ROUTE ------------------
 
 @app.post("/upload")
 async def upload_excel(file: UploadFile = File(...)):
@@ -271,14 +334,14 @@ async def upload_excel(file: UploadFile = File(...)):
     reference_source = "excel"
 
     return {
-        "message": "Excel uploaded successfully",
+        "message":          "Excel uploaded successfully",
         "reference_source": reference_source,
-        "rows_loaded": len(reference_data_store),
-        "data": reference_data_store,
+        "rows_loaded":      len(reference_data_store),
+        "data":             reference_data_store,
     }
 
 
-# ------------------ PDF ROUTE (NEW FLOW) ------------------
+# ------------------ PDF ROUTE ------------------
 
 @app.post("/upload-pdfs")
 async def upload_pdfs(files: List[UploadFile] = File(...)):
@@ -292,29 +355,29 @@ async def upload_pdfs(files: List[UploadFile] = File(...)):
             return {"error": f"{file.filename} is not a PDF"}
 
     try:
-        saved_paths = save_uploaded_pdfs(files)
+        saved_paths    = save_uploaded_pdfs(files)
         merged_pdf_path = merge_pdfs(saved_paths)
 
         raw_extracted = extract_cargo_data_with_gemini(merged_pdf_path)
-        normalized = normalize_reference_rows(raw_extracted, source="pdf")
+        normalized    = normalize_reference_rows(raw_extracted, source="pdf")
 
         reference_data_store = normalized
-        reference_source = "pdf"
+        reference_source     = "pdf"
 
         raw_json_path, normalized_json_path, excel_path = save_extracted_outputs(
             raw_extracted, normalized
         )
 
         return {
-            "message": "PDFs processed successfully",
-            "reference_source": reference_source,
-            "pdf_count": len(files),
-            "items_extracted": len(reference_data_store),
-            "merged_pdf": merged_pdf_path.name,
-            "raw_json_file": raw_json_path.name,
-            "normalized_json_file": normalized_json_path.name,
-            "excel_file": excel_path.name,
-            "data": reference_data_store,
+            "message":               "PDFs processed successfully",
+            "reference_source":      reference_source,
+            "pdf_count":             len(files),
+            "items_extracted":       len(reference_data_store),
+            "merged_pdf":            merged_pdf_path.name,
+            "raw_json_file":         raw_json_path.name,
+            "normalized_json_file":  normalized_json_path.name,
+            "excel_file":            excel_path.name,
+            "data":                  reference_data_store,
         }
 
     except Exception as e:
@@ -327,7 +390,7 @@ async def upload_pdfs(files: List[UploadFile] = File(...)):
 def receive_sensor_data(item: HardwareItem):
     hardware_data_store.append(item.dict())
     return {
-        "message": "Data received",
+        "message":       "Data received",
         "current_count": len(hardware_data_store),
     }
 
@@ -340,19 +403,22 @@ def get_hardware_data():
 @app.get("/live-data")
 def get_live_data():
     """
-    Optional compatibility route if frontend polls /live-data instead of /hardware-data.
-    If a reference dataset exists, this returns comparison results.
-    Otherwise it returns raw hardware data with status placeholders.
+    Returns each hardware item enriched with a comparison `status` field.
+
+    Matching is done by `id` against the loaded reference dataset.
+    Fields compared: name, cargo_type, hs_code, weight, volume.
     """
     if not hardware_data_store:
         return []
+
+    timestamp = datetime.now().strftime("%I:%M:%S %p")
 
     if not reference_data_store:
         return [
             {
                 **item,
                 "status": "No reference loaded",
-                "time": datetime.now().strftime("%I:%M:%S %p"),
+                "time":   timestamp,
             }
             for item in hardware_data_store
         ]
@@ -360,38 +426,40 @@ def get_live_data():
     results = []
 
     for item in hardware_data_store:
-        match = next((ref for ref in reference_data_store if ref["id"] == item["id"]), None)
+        ref = next(
+            (r for r in reference_data_store if r["id"] == item["id"]),
+            None,
+        )
 
-        if not match:
+        if ref is None:
             status = "Missing in document"
         else:
-            msgs = []
+            mismatches: List[str] = []
 
-            if match["name"] and match["name"] != item["name"]:
-                msgs.append("Name mismatch")
+            # --- String field comparisons ---
+            if ref["name"] and ref["name"] != item.get("name", ""):
+                mismatches.append("Name mismatch")
 
-            if abs(float(match["weight"]) - float(item["weight"])) > 0.001:
-                msgs.append("Weight mismatch")
+            if ref["cargo_type"] and ref["cargo_type"] != item.get("cargo_type", ""):
+                mismatches.append("Type mismatch")
 
-            if (
-                match["length"] > 0
-                or match["width"] > 0
-                or match["height"] > 0
-            ):
-                if abs(float(match["length"]) - float(item["length"])) > 0.001:
-                    msgs.append("Length mismatch")
-                if abs(float(match["width"]) - float(item["width"])) > 0.001:
-                    msgs.append("Width mismatch")
-                if abs(float(match["height"]) - float(item["height"])) > 0.001:
-                    msgs.append("Height mismatch")
+            if ref["hs_code"] and ref["hs_code"] != item.get("hs_code", ""):
+                mismatches.append("HS mismatch")
 
-            status = ", ".join(msgs) if msgs else "OK"
+            # --- Numeric field comparisons (tolerance: 0.001) ---
+            if abs(float(ref["weight"]) - float(item.get("weight", 0))) > 0.001:
+                mismatches.append("Weight mismatch")
+
+            if abs(float(ref["volume"]) - float(item.get("volume", 0))) > 0.001:
+                mismatches.append("Volume mismatch")
+
+            status = ", ".join(mismatches) if mismatches else "OK"
 
         results.append(
             {
                 **item,
                 "status": status,
-                "time": datetime.now().strftime("%I:%M:%S %p"),
+                "time":   timestamp,
             }
         )
 
@@ -412,7 +480,7 @@ def download_excel(filename: str):
     return FileResponse(
         path=file_path,
         filename=filename,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
 
 
