@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Edges, OrbitControls } from "@react-three/drei";
 import { useMonitoring } from "../MonitoringContext";
