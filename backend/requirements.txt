@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+pandas
+pypdf
+jinja2
+python-multipart
+google-generativeai
+openpyxl
