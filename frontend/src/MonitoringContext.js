@@ -19,7 +19,7 @@ export function MonitoringProvider({ children }) {
 
   const BELT_SPEED = 80;
 
-  // Keep running state in sync
+  // Keep running state in sync with ref
   useEffect(() => {
     isRunningRef.current = isRunning;
     if (!isRunning) lastTimeRef.current = null;
@@ -60,86 +60,90 @@ export function MonitoringProvider({ children }) {
     };
   }, []);
 
-  // Backend polling (ALWAYS RUNNING)
+  // Backend polling — consumes /live-data which returns canonical schema + status
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
         if (excelData.length === 0 || !isRunning) return;
 
-        const res = await fetch("http://127.0.0.1:8000/hardware-data");
+        const res = await fetch("http://127.0.0.1:8000/live-data");
         const data = await res.json();
-        const latest = data[data.length - 1];
 
+        if (!Array.isArray(data) || data.length === 0) return;
+
+        const latest = data[data.length - 1];
         if (!latest) return;
 
-        const match = excelData.find((item) => item.id === latest.id);
-
-        let status = "";
-
-        if (!match) {
-          status = "Missing in document";
-        } else {
-          const errors = [];
-
-          if (match.name !== latest.name) errors.push("Name mismatch");
-          if (match.weight !== latest.weight) errors.push("Weight mismatch");
-
-          ["length", "width", "height"].forEach((dim) => {
-            if (match[dim] !== latest[dim]) {
-              errors.push(`${dim} mismatch`);
-            }
-          });
-
-          status = errors.length ? errors.join(", ") : "OK";
-        }
-
-        const time = new Date().toLocaleTimeString();
-
-        setTableData((prev) => {
-          if (prev.find((row) => row.id === latest.id)) return prev;
-          return [{ ...latest, status, time }, ...prev].slice(0, 50);
-        });
-
-        // Add new item to conveyor (LEFT side)
-        const newItem = {
-          uid: uidRef.current++,
-          id: latest.id,
-          status,
-          time,
-          x: -70,
+        // Normalise fields — backend is authoritative, just guard missing values
+        const row = {
+          id:         String(latest.id         ?? ""),
+          name:       String(latest.name       ?? ""),
+          cargo_type: String(latest.cargo_type ?? ""),
+          weight:     latest.weight  != null ? Number(latest.weight)  : 0,
+          volume:     latest.volume  != null ? Number(latest.volume)  : 0,
+          hs_code:    String(latest.hs_code    ?? ""),
+          status:     String(latest.status     ?? ""),
+          time:       String(latest.time       ?? new Date().toLocaleTimeString()),
         };
 
-        conveyorItemsRef.current = [
-          ...conveyorItemsRef.current,
-          newItem,
-        ];
+        // Deduplicate by id — only add if not already present
+        setTableData((prev) => {
+          if (prev.find((r) => r.id === row.id)) return prev;
+          return [row, ...prev].slice(0, 50);
+        });
+
+        // Spawn a new box on the left side of the conveyor belt
+        const newItem = {
+          uid:    uidRef.current++,
+          id:     row.id,
+          status: row.status,
+          time:   row.time,
+          x:      -70,
+        };
+
+        conveyorItemsRef.current = [...conveyorItemsRef.current, newItem];
       } catch (err) {
-        console.error(err);
+        console.error("Polling error:", err);
       }
     }, 2000);
 
     return () => clearInterval(interval);
   }, [excelData, isRunning]);
 
-  // File upload handler
+  // Excel file upload handler
   const handleFile = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
 
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       const data = new Uint8Array(evt.target.result);
       const workbook = XLSX.read(data, { type: "array" });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(sheet);
 
-      setExcelData(jsonData);
-      setTableData([]);
+      // Upload to backend so it can be used as reference data
+      const formData = new FormData();
+      formData.append("file", file);
 
+      try {
+        const res = await fetch("http://127.0.0.1:8000/upload", {
+          method: "POST",
+          body: formData,
+        });
+        const result = await res.json();
+        // Use backend-normalised data if available, otherwise fall back to parsed sheet
+        setExcelData(result.data && result.data.length > 0 ? result.data : jsonData);
+      } catch (err) {
+        console.error("Excel upload error:", err);
+        // Still set local data so the UI is not blocked
+        setExcelData(jsonData);
+      }
+
+      setTableData([]);
       conveyorItemsRef.current = [];
       setConveyorRenderItems([]);
-
       setIsRunning(false);
       uidRef.current = 0;
     };
@@ -147,11 +151,13 @@ export function MonitoringProvider({ children }) {
     reader.readAsArrayBuffer(file);
   };
 
-  // Reset system
+  // Full system reset
   const resetBackend = async () => {
-    await fetch("http://127.0.0.1:8000/clear-data", {
-      method: "DELETE",
-    });
+    try {
+      await fetch("http://127.0.0.1:8000/clear-data", { method: "DELETE" });
+    } catch (err) {
+      console.error("Reset error:", err);
+    }
 
     setTableData([]);
     setExcelData([]);
