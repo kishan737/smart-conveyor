@@ -1,0 +1,37 @@
+[
+  {
+    "product_name": "Valve Materials",
+    "hs_code": "8481.80",
+    "unique_id": "1001",
+    "gross_weight": "2,400 kg",
+    "volume": "3.50 m²"
+  },
+  {
+    "product_name": "Machinery Parts",
+    "hs_code": "8466.94",
+    "unique_id": "1002",
+    "gross_weight": "3,000 kg",
+    "volume": "4.23 m²"
+  },
+  {
+    "product_name": "Bus Spare Parts",
+    "hs_code": "8708.99",
+    "unique_id": "1003",
+    "gross_weight": "4,235 kg",
+    "volume": "5.32 m²"
+  },
+  {
+    "product_name": "Precision Parts, Motors",
+    "hs_code": "8503.00",
+    "unique_id": "1004",
+    "gross_weight": "3,487 kg",
+    "volume": "6.40 m²"
+  },
+  {
+    "product_name": "Frames for Spectacles",
+    "hs_code": "9003.11",
+    "unique_id": "1005",
+    "gross_weight": "6,789 kg",
+    "volume": "8.00 m²"
+  }
+]

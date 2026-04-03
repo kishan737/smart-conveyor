@@ -1,0 +1,57 @@
+[
+  {
+    "id": "1001",
+    "name": "Valve Materials",
+    "weight": 2400.0,
+    "length": 0.0,
+    "width": 0.0,
+    "height": 0.0,
+    "hs_code": "8481.80",
+    "volume": 0.0,
+    "source": "pdf"
+  },
+  {
+    "id": "1002",
+    "name": "Machinery Parts",
+    "weight": 3000.0,
+    "length": 0.0,
+    "width": 0.0,
+    "height": 0.0,
+    "hs_code": "8466.94",
+    "volume": 0.0,
+    "source": "pdf"
+  },
+  {
+    "id": "1003",
+    "name": "Bus Spare Parts",
+    "weight": 4235.0,
+    "length": 0.0,
+    "width": 0.0,
+    "height": 0.0,
+    "hs_code": "8708.99",
+    "volume": 0.0,
+    "source": "pdf"
+  },
+  {
+    "id": "1004",
+    "name": "Precision Parts, Motors",
+    "weight": 3487.0,
+    "length": 0.0,
+    "width": 0.0,
+    "height": 0.0,
+    "hs_code": "8503.00",
+    "volume": 0.0,
+    "source": "pdf"
+  },
+  {
+    "id": "1005",
+    "name": "Frames for Spectacles",
+    "weight": 6789.0,
+    "length": 0.0,
+    "width": 0.0,
+    "height": 0.0,
+    "hs_code": "9003.11",
+    "volume": 0.0,
+    "source": "pdf"
+  }
+]
