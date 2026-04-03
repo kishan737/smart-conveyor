@@ -14,7 +14,7 @@ import pandas as pd
 from pypdf import PdfWriter
 from dotenv import load_dotenv
 
-from google import genai
+import google.generativeai as genai
 from google.genai import types
 
 # ------------------ INIT ------------------
