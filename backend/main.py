@@ -15,7 +15,6 @@ from pypdf import PdfWriter
 from dotenv import load_dotenv
 
 import google.generativeai as genai
-from google.genai import types
 
 # ------------------ INIT ------------------
 
@@ -131,7 +130,6 @@ def normalize_reference_rows(rows: List[dict], source: str) -> List[dict]:
                 }
             )
 
-    # Drop totally empty ids if needed
     normalized = [row for row in normalized if row["id"] or row["name"]]
     return normalized
 
@@ -170,8 +168,12 @@ def extract_cargo_data_with_gemini(pdf_path: Path) -> list:
     if not GEMINI_API_KEY:
         raise ValueError("GEMINI_API_KEY missing")
 
-    client = genai.Client(api_key=GEMINI_API_KEY)
-    uploaded_file = client.files.upload(file=str(pdf_path))
+    genai.configure(api_key=GEMINI_API_KEY)
+
+    with open(pdf_path, "rb") as f:
+        pdf_bytes = f.read()
+
+    model = genai.GenerativeModel("gemini-1.5-flash")
 
     prompt = """Extract cargo data from this PDF.
 
@@ -190,12 +192,11 @@ Rules:
 - Do not guess values
 """
 
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=[uploaded_file, prompt],
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json"
-        ),
+    response = model.generate_content(
+        [
+            {"mime_type": "application/pdf", "data": pdf_bytes},
+            prompt
+        ]
     )
 
     text = response.text.strip()
@@ -206,7 +207,6 @@ Rules:
         raise ValueError("Gemini did not return valid JSON")
 
     if isinstance(parsed, dict):
-        # If Gemini wraps list inside a dict unexpectedly
         if "items" in parsed and isinstance(parsed["items"], list):
             return parsed["items"]
         return [parsed]
@@ -241,6 +241,7 @@ def save_extracted_outputs(raw_data: list, normalized_data: list):
 @app.get("/")
 def root():
     return {"message": "Backend running"}
+
 
 @app.get("/reference-status")
 def reference_status():
@@ -369,11 +370,9 @@ def get_live_data():
             if match["name"] and match["name"] != item["name"]:
                 msgs.append("Name mismatch")
 
-            # Use tolerant weight compare
             if abs(float(match["weight"]) - float(item["weight"])) > 0.001:
                 msgs.append("Weight mismatch")
 
-            # Only compare dimensions if reference came from Excel and dimensions exist
             if (
                 match["length"] > 0
                 or match["width"] > 0
@@ -413,14 +412,14 @@ def download_excel(filename: str):
     return FileResponse(
         path=file_path,
         filename=filename,
-        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
 
 @app.post("/reset")
 def reset_all():
+    global reference_source
     hardware_data_store.clear()
     reference_data_store.clear()
-    global reference_source
     reference_source = None
     return {"message": "System reset"}
