@@ -171,7 +171,7 @@ export function MonitoringProvider({ children }) {
   // Full system reset
   const resetBackend = async () => {
     try {
-      await fetch("http://smart-conveyor.onrendor.com/clear-data", { method: "DELETE" });
+      await fetch("http://smart-conveyor.onrender.com/clear-data", { method: "DELETE" });
     } catch (err) {
       console.error("Reset error:", err);
     }
