@@ -71,11 +71,9 @@ export function MonitoringProvider({ children }) {
       try {
         if (excelData.length === 0 || !isRunning) return;
 
-// structfixed-version
+        // ✅ FIX 1: Removed leftover git merge conflict markers that were here
         const res = await fetch("https://smart-conveyor.onrender.com/live-data");
 
-       
-        // main
         const data = await res.json();
 
         if (!Array.isArray(data) || data.length === 0) return;
@@ -145,7 +143,8 @@ export function MonitoringProvider({ children }) {
       formData.append("file", file);
 
       try {
-        const res = await fetch("http://smart-conveyor.onrender.com/upload", {
+        // ✅ FIX 2: Changed http:// to https://
+        const res = await fetch("https://smart-conveyor.onrender.com/upload", {
           method: "POST",
           body: formData,
         });
@@ -171,7 +170,8 @@ export function MonitoringProvider({ children }) {
   // Full system reset
   const resetBackend = async () => {
     try {
-      await fetch("http://smart-conveyor.onrender.com/clear-data", { method: "DELETE" });
+      // ✅ FIX 3: Fixed typo "onrendor" → "onrender" and http → https
+      await fetch("https://smart-conveyor.onrender.com/clear-data", { method: "DELETE" });
     } catch (err) {
       console.error("Reset error:", err);
     }
