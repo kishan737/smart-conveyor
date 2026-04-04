@@ -2,7 +2,7 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import { MonitoringProvider } from "./MonitoringContext";
 import LiveMonitor from "./pages/LiveMonitor";
-import Optimization from "./pages/Optimization";
+
 import Analytics from "./pages/Analytics";
 
 function App() {
@@ -15,14 +15,14 @@ function App() {
 
             <div style={navStyle}>
               <Link to="/" style={linkStyle}>Live Monitor</Link>
-              <Link to="/optimization" style={linkStyle}>Optimization</Link>
+           
               <Link to="/analytics" style={linkStyle}>Analytics</Link>
             </div>
           </div>
 
           <Routes>
             <Route path="/" element={<LiveMonitor />} />
-            <Route path="/optimization" element={<Optimization />} />
+           
             <Route path="/analytics" element={<Analytics />} />
           </Routes>
         </div>
