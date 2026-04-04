@@ -437,11 +437,8 @@ def get_live_data():
             mismatches: List[str] = []
 
             # --- String field comparisons ---
-            if ref["name"] and ref["name"] != item.get("name", ""):
-                mismatches.append("Name mismatch")
+         
 
-            if ref["cargo_type"] and ref["cargo_type"] != item.get("cargo_type", ""):
-                mismatches.append("Type mismatch")
 
             if ref["hs_code"] and ref["hs_code"] != item.get("hs_code", ""):
                 mismatches.append("HS mismatch")
