@@ -351,7 +351,7 @@ function LiveMonitor() {
     }
     try {
       setPdfStatus("Uploading PDFs...");
-      structfixed-version
+      // structfixed-version
       const res = await fetch("https://smart-conveyor.onrender.com/upload-pdfs", {
 
      
@@ -403,7 +403,7 @@ function LiveMonitor() {
               }}
               onClick={() => {
                 window.open(
-        structfixed-version
+        // structfixed-version
                   `https://smart-conveyor.onrender.com/download-excel/${excelFileName}`,
 
                  
