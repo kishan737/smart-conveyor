@@ -205,15 +205,15 @@ Each element of the array must have EXACTLY these six fields:
                   • if only dimensions are given, compute volume = L × W × H
                     after converting each dimension to metres:
                       mm → ÷ 1000  |  cm → ÷ 100  |  in → × 0.0254  |  ft → × 0.3048
-                  • if neither volume nor dimensions are present, use 0
+                  
 
 Rules:
+   *look very carefully all the data you need to fill is there dont leave any column empty 
   • Ignore document headers, sender / receiver addresses, and grand-total rows.
   • Do NOT guess or invent values.
-  • Missing text  → ""
-  • Missing number → 0
+  
   • Return a flat JSON array even if the PDF contains only one item.
-
+  
 Example output format:
 [
   {
