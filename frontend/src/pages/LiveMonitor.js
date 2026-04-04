@@ -407,7 +407,7 @@ function LiveMonitor() {
                   `https://smart-conveyor.onrender.com/download-excel/${excelFileName}`,
 
                  
-         main
+         // main
                   "_blank"
                 );
               }}
