@@ -351,7 +351,7 @@ function LiveMonitor() {
     }
     try {
       setPdfStatus("Uploading PDFs...");
-      const res = await fetch("https://smart-conveyor-copy-production.up.railway.app/upload-pdfs", {
+      const res = await fetch("http:127.0.0.1:8000/upload-pdfs", {
         method: "POST",
         body: formData,
       });
@@ -399,7 +399,7 @@ function LiveMonitor() {
               }}
               onClick={() => {
                 window.open(
-                  `https://smart-conveyor-copy-production.up.railway.app/download-excel/${excelFileName}`,
+                  `http://127.0.0.1:8000/download-excel/${excelFileName}`,
                   "_blank"
                 );
               }}
