@@ -351,7 +351,7 @@ function LiveMonitor() {
     }
     try {
       setPdfStatus("Uploading PDFs...");
-      const res = await fetch("https://smart-conveyor-copy-production.up.railway.app/upload-pdfs", {
+      const res = await fetch("https://smart-conveyor.onrendor.com/upload-pdfs", {
         method: "POST",
         body: formData,
       });
