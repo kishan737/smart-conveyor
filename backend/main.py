@@ -19,6 +19,9 @@ import google.generativeai as genai
 # ------------------ INIT ------------------
 
 app = FastAPI()
+@app.get("/")
+def root():
+    return {"status":"alive"}
 
 app.add_middleware(
     CORSMiddleware,

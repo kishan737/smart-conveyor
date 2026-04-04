@@ -351,7 +351,11 @@ function LiveMonitor() {
     }
     try {
       setPdfStatus("Uploading PDFs...");
-      const res = await fetch("http:127.0.0.1:8000/upload-pdfs", {
+      structfixed-version
+      const res = await fetch("https://smart-conveyor.onrender.com/upload-pdfs", {
+
+     
+        main
         method: "POST",
         body: formData,
       });
@@ -399,7 +403,11 @@ function LiveMonitor() {
               }}
               onClick={() => {
                 window.open(
-                  `http://127.0.0.1:8000/download-excel/${excelFileName}`,
+        structfixed-version
+                  `https://smart-conveyor.onrender.com/download-excel/${excelFileName}`,
+
+                 
+         main
                   "_blank"
                 );
               }}
