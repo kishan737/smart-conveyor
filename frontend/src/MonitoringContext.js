@@ -17,6 +17,11 @@ export function MonitoringProvider({ children }) {
   const trackRef = useRef(null);
   const uidRef = useRef(0);
 
+  // Tracks the key of the last row that triggered a belt box spawn.
+  // Format: `${row.id}-${row.time}`. Prevents re-spawning on repeated polls
+  // when the hardware has stopped sending new data.
+  const lastSeenKeyRef = useRef(null);
+
   const BELT_SPEED = 80;
 
   // Keep running state in sync with ref
@@ -92,6 +97,14 @@ export function MonitoringProvider({ children }) {
           return [row, ...prev].slice(0, 50);
         });
 
+        // Build a unique key for this row. Only spawn a belt box when the key
+        // is genuinely different from the last one we acted on, so a stale
+        // repeated poll result never re-adds the same item.
+        const rowKey = `${row.id}-${row.time}`;
+        if (rowKey === lastSeenKeyRef.current) return;
+
+        lastSeenKeyRef.current = rowKey;
+
         // Spawn a new box on the left side of the conveyor belt
         const newItem = {
           uid:    uidRef.current++,
@@ -165,6 +178,9 @@ export function MonitoringProvider({ children }) {
 
     conveyorItemsRef.current = [];
     setConveyorRenderItems([]);
+
+    // Clear the remembered key so the next session starts fresh
+    lastSeenKeyRef.current = null;
 
     uidRef.current = 0;
   };
