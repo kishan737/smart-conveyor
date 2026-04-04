@@ -71,7 +71,7 @@ export function MonitoringProvider({ children }) {
       try {
         if (excelData.length === 0 || !isRunning) return;
 
-        const res = await fetch("https://smart-conveyor-copy-production.up.railway.app/live-data");
+        const res = await fetch("https://smart-conveyor.onrender.com/live-data");
         const data = await res.json();
 
         if (!Array.isArray(data) || data.length === 0) return;
