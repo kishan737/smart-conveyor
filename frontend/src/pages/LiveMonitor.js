@@ -355,7 +355,7 @@ function LiveMonitor() {
       const res = await fetch("https://smart-conveyor.onrender.com/upload-pdfs", {
 
      
-        main
+        //main
         method: "POST",
         body: formData,
       });
