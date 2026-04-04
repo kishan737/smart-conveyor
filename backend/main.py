@@ -25,7 +25,7 @@ def root():
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://smart-conveyor.vercel.app"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -208,15 +208,15 @@ Each element of the array must have EXACTLY these six fields:
                   • if only dimensions are given, compute volume = L × W × H
                     after converting each dimension to metres:
                       mm → ÷ 1000  |  cm → ÷ 100  |  in → × 0.0254  |  ft → × 0.3048
-                  • if neither volume nor dimensions are present, use 0
+                  
 
 Rules:
+   *look very carefully all the data you need to fill is there dont leave any column empty 
   • Ignore document headers, sender / receiver addresses, and grand-total rows.
   • Do NOT guess or invent values.
-  • Missing text  → ""
-  • Missing number → 0
+  
   • Return a flat JSON array even if the PDF contains only one item.
-
+  
 Example output format:
 [
   {
@@ -240,7 +240,7 @@ def extract_cargo_data_with_gemini(pdf_path: Path) -> list:
     with open(pdf_path, "rb") as f:
         pdf_bytes = f.read()
 
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    model = genai.GenerativeModel("gemini-2.5-pro")
 
     response = model.generate_content(
         [
@@ -440,11 +440,8 @@ def get_live_data():
             mismatches: List[str] = []
 
             # --- String field comparisons ---
-            if ref["name"] and ref["name"] != item.get("name", ""):
-                mismatches.append("Name mismatch")
+         
 
-            if ref["cargo_type"] and ref["cargo_type"] != item.get("cargo_type", ""):
-                mismatches.append("Type mismatch")
 
             if ref["hs_code"] and ref["hs_code"] != item.get("hs_code", ""):
                 mismatches.append("HS mismatch")
