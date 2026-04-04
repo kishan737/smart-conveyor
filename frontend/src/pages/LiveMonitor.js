@@ -399,7 +399,7 @@ function LiveMonitor() {
               }}
               onClick={() => {
                 window.open(
-                  `https://smart-conveyor-copy-production.up.railway.app/download-excel/${excelFileName}`,
+                  `https://smart-conveyor.onrender.com/download-excel/${excelFileName}`,
                   "_blank"
                 );
               }}
