@@ -141,7 +141,7 @@ export function MonitoringProvider({ children }) {
       formData.append("file", file);
 
       try {
-        const res = await fetch("http://127.0.0.1:8000/upload", {
+        const res = await fetch("http://smart-conveyor.onrender.com/upload", {
           method: "POST",
           body: formData,
         });
@@ -167,7 +167,7 @@ export function MonitoringProvider({ children }) {
   // Full system reset
   const resetBackend = async () => {
     try {
-      await fetch("http://127.0.0.1:8000/clear-data", { method: "DELETE" });
+      await fetch("http://smart-conveyor.onrendor.com/clear-data", { method: "DELETE" });
     } catch (err) {
       console.error("Reset error:", err);
     }
